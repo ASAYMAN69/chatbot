@@ -25,6 +25,64 @@
     // Get session ID for this user session
     const sessionId = generateSessionId();
     
+    // UI Configuration (color scheme)
+    const UIConfig = {
+      // Default colors
+      chatButtonColor: 'rgb(74, 227, 247)', 
+      sendButtonColor: 'rgb(74, 227, 247)',
+      
+      // Set custom chat button color and update derived colors
+      setChatButtonColor: function(color) {
+        this.chatButtonColor = color;
+        
+        // Apply the new color to all relevant elements
+        document.documentElement.style.setProperty('--chat-button-color', color);
+        
+        // Calculate a lighter version of the color for buttons hover
+        const buttonHoverColor = this.lightenColor(color, 0.2);
+        document.documentElement.style.setProperty('--button-hover-color', buttonHoverColor);
+        
+        // Calculate a lighter version for bot messages
+        const botMessageColor = this.lightenColor(color, 0.85);
+        document.documentElement.style.setProperty('--bot-message-color', botMessageColor);
+      },
+      
+      // Set send button color
+      setSendButtonColor: function(color) {
+        this.sendButtonColor = color;
+        document.documentElement.style.setProperty('--send-button-color', color);
+      },
+      
+      // Helper function to lighten a color
+      lightenColor: function(color, factor) {
+        // Convert to RGB if it's a hex color
+        let r, g, b;
+        
+        if (color.startsWith('#')) {
+          const hex = color.replace('#', '');
+          r = parseInt(hex.substr(0, 2), 16);
+          g = parseInt(hex.substr(2, 2), 16);
+          b = parseInt(hex.substr(4, 2), 16);
+        } else if (color.startsWith('rgb')) {
+          // Extract RGB values
+          const rgbValues = color.match(/\d+/g);
+          r = parseInt(rgbValues[0]);
+          g = parseInt(rgbValues[1]);
+          b = parseInt(rgbValues[2]);
+        } else {
+          // Default to a light blue if color format is unknown
+          return `rgba(200, 240, 255, ${factor})`;
+        }
+        
+        // Lighten the color
+        r = Math.floor(r + (255 - r) * factor);
+        g = Math.floor(g + (255 - g) * factor);
+        b = Math.floor(b + (255 - b) * factor);
+        
+        return `rgb(${r}, ${g}, ${b})`;
+      }
+    };
+    
     // Chat API handling
     const chatApi = {
       webhookUrl: 'https://lovely-proper-sunfish.ngrok-free.app/webhook/b5a531d1-585f-43fe-ba30-ec5aacac4189/chat',
@@ -61,9 +119,16 @@
   
     // Create the chat UI
     function createChatWidget() {
-      // Create styles for the widget
+      // Create styles for the widget with CSS variables for theming
       const style = document.createElement('style');
       style.textContent = `
+        :root {
+          --chat-button-color: ${UIConfig.chatButtonColor};
+          --send-button-color: ${UIConfig.sendButtonColor};
+          --bot-message-color: ${UIConfig.lightenColor(UIConfig.chatButtonColor, 0.85)};
+          --button-hover-color: ${UIConfig.lightenColor(UIConfig.chatButtonColor, 0.2)};
+        }
+        
         #chat-widget-container {
           position: fixed;
           bottom: 20px;
@@ -76,7 +141,7 @@
           width: 60px;
           height: 60px;
           border-radius: 50%;
-          background-color:rgb(74, 227, 247);
+          background-color: var(--chat-button-color);
           color: white;
           display: flex;
           align-items: center;
@@ -93,6 +158,7 @@
         #chat-widget-button svg {
           width: 28px;
           height: 28px;
+          transition: transform 0.3s ease;
         }
         
         #chat-widget-window {
@@ -107,14 +173,19 @@
           display: none;
           flex-direction: column;
           overflow: hidden;
+          opacity: 0;
+          transform: translateY(20px);
+          transition: opacity 0.3s, transform 0.3s;
         }
         
         #chat-widget-window.open {
           display: flex;
+          opacity: 1;
+          transform: translateY(0);
         }
         
         #chat-widget-header {
-          background-color: #4a6cf7;
+          background-color: var(--chat-button-color);
           color: white;
           padding: 12px 16px;
           display: flex;
@@ -146,7 +217,7 @@
           padding: 16px;
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 8px;
         }
         
         .chat-message {
@@ -160,16 +231,24 @@
         
         .chat-message.bot {
           align-self: flex-start;
-          background-color: #f1f1f1;
+          background-color: var(--bot-message-color);
           color: #333;
           border-bottom-left-radius: 4px;
+          margin-bottom: 3px;
         }
         
         .chat-message.user {
           align-self: flex-end;
-          background-color: #4a6cf7;
+          background-color: var(--send-button-color);
           color: white;
           border-bottom-right-radius: 4px;
+          margin-bottom: 3px;
+        }
+        
+        .chat-image-container {
+          align-self: flex-start;
+          max-width: 80%;
+          margin-bottom: 3px;
         }
         
         #chat-widget-input-area {
@@ -190,11 +269,11 @@
         }
         
         #chat-widget-input:focus {
-          border-color: #4a6cf7;
+          border-color: var(--chat-button-color);
         }
         
         #chat-widget-send {
-          background-color: #4a6cf7;
+          background-color: var(--send-button-color);
           color: white;
           border: none;
           width: 34px;
@@ -216,7 +295,7 @@
           display: flex;
           gap: 4px;
           padding: 8px 12px;
-          background-color: #f1f1f1;
+          background-color: var(--bot-message-color);
           border-radius: 18px;
           width: fit-content;
           align-self: flex-start;
@@ -241,6 +320,35 @@
           50% { transform: translateY(-5px); }
           100% { transform: translateY(0); }
         }
+        
+        .chat-button-wrapper {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 8px;
+        }
+        
+        .chat-inline-button {
+          background-color: transparent;
+          border: 1px solid var(--chat-button-color);
+          border-radius: 16px;
+          padding: 6px 12px;
+          font-size: 12px;
+          cursor: pointer;
+          transition: background-color 0.2s, color 0.2s;
+          color: #333;
+        }
+        
+        .chat-inline-button:hover {
+          background-color: var(--button-hover-color);
+          color: #000;
+        }
+        
+        .chat-image {
+          max-width: 100%;
+          max-height: 200px;
+          border-radius: 8px;
+        }
       `;
       
       document.head.appendChild(style);
@@ -249,10 +357,10 @@
       const container = document.createElement('div');
       container.id = 'chat-widget-container';
       
-      // Create the chat button
+      // Create the chat button with both message and arrow icons
       const button = document.createElement('div');
       button.id = 'chat-widget-button';
-      button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>';
+      button.innerHTML = '<svg id="chat-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><svg id="arrow-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><polyline points="6 9 12 15 18 9"></polyline></svg>';
       
       // Create the chat window
       const chatWindow = document.createElement('div');
@@ -305,23 +413,48 @@
       // Add the container to the body
       document.body.appendChild(container);
       
+      // Apply initial colors
+      UIConfig.setChatButtonColor(UIConfig.chatButtonColor);
+      UIConfig.setSendButtonColor(UIConfig.sendButtonColor);
+      
+      // Test function to demonstrate changing colors (for development/testing)
+      window.changeChatColors = function(chatColor, sendColor) {
+        if (chatColor) UIConfig.setChatButtonColor(chatColor);
+        if (sendColor) UIConfig.setSendButtonColor(sendColor);
+      };
+      
       // Add event listeners
       button.addEventListener('click', () => {
         chatWindow.classList.toggle('open');
         
-        // If opening the chat for the first time, show welcome message
-        if (chatWindow.classList.contains('open') && messagesContainer.children.length === 0) {
-          showTypingIndicator();
+        // Toggle between chat and arrow icons
+        const chatIcon = document.getElementById('chat-icon');
+        const arrowIcon = document.getElementById('arrow-icon');
+        
+        if (chatWindow.classList.contains('open')) {
+          chatIcon.style.display = 'none';
+          arrowIcon.style.display = 'block';
           
-          setTimeout(() => {
-            hideTypingIndicator();
-            addMessage("Hello! How can I help you today?", 'bot');
-          }, 1000);
+          // If opening the chat for the first time, show welcome message
+          if (messagesContainer.children.length === 0) {
+            showTypingIndicator();
+            
+            setTimeout(() => {
+              hideTypingIndicator();
+              addMessage("Hello! How can I help you today?", 'bot');
+            }, 1000);
+          }
+        } else {
+          chatIcon.style.display = 'block';
+          arrowIcon.style.display = 'none';
         }
       });
       
       closeButton.addEventListener('click', () => {
         chatWindow.classList.remove('open');
+        // Reset to chat icon when closed
+        document.getElementById('chat-icon').style.display = 'block';
+        document.getElementById('arrow-icon').style.display = 'none';
       });
       
       // Handle sending messages
@@ -344,7 +477,7 @@
         // Hide typing indicator and show response
         setTimeout(() => {
           hideTypingIndicator();
-          addMessage(botResponse, 'bot');
+          processAndDisplayBotResponse(botResponse);
         }, 500);
       };
       
@@ -356,52 +489,96 @@
         }
       });
       
-      // Helper functions for adding messages
-      function addMessage(text, sender) {
-        const messageElement = document.createElement('div');
-        messageElement.classList.add('chat-message', sender);
-      
-        if (sender === 'bot') {
-          // Extract buttons and remove them from main text
-          const buttonMatches = [...text.matchAll(/``(.*?)``/g)];
-          const cleanText = text.replace(/``.*?``/g, '').trim();
-      
+      // Process and display bot response with separate images and text
+      function processAndDisplayBotResponse(text) {
+        // Check for postimg.cc image URLs
+        const imageRegex = /https:\/\/i\.postimg\.cc\/\S+/g;
+        const imageMatches = text.match(imageRegex);
+        
+        // Check for button markup
+        const buttonRegex = /``(.*?)``/g;
+        const buttonMatches = [...text.matchAll(buttonRegex)];
+        
+        // Clean text by removing button markers
+        let cleanText = text.replace(/``.*?``/g, '');
+        
+        // If there are image URLs, remove them from the text as well
+        if (imageMatches) {
+          imageMatches.forEach(imgUrl => {
+            cleanText = cleanText.replace(imgUrl, '');
+          });
+        }
+        
+        cleanText = cleanText.trim();
+        
+        // Add images first (if any) as separate messages
+        if (imageMatches && imageMatches.length > 0) {
+          imageMatches.forEach(imageUrl => {
+            const imageContainer = document.createElement('div');
+            imageContainer.className = 'chat-image-container';
+            
+            const imageElement = document.createElement('img');
+            imageElement.src = imageUrl;
+            imageElement.alt = 'Chat image';
+            imageElement.className = 'chat-image';
+            imageElement.onerror = () => {
+              imageElement.style.display = 'none';
+              console.error('Failed to load image:', imageUrl);
+            };
+            
+            imageContainer.appendChild(imageElement);
+            messagesContainer.appendChild(imageContainer);
+          });
+        }
+        
+        // Only add text content if it exists (with buttons if any)
+        if (cleanText || buttonMatches.length > 0) {
+          const messageElement = document.createElement('div');
+          messageElement.classList.add('chat-message', 'bot');
+          
           if (cleanText) {
             const textNode = document.createElement('div');
             textNode.textContent = cleanText;
             messageElement.appendChild(textNode);
           }
-      
-          if (buttonMatches.length > 0) {
+          
+          // Add buttons if any
+          if (buttonMatches && buttonMatches.length > 0) {
             const buttonWrapper = document.createElement('div');
             buttonWrapper.className = 'chat-button-wrapper';
-      
+            
             buttonMatches.forEach(match => {
               const buttonText = match[1];
               const button = document.createElement('button');
               button.className = 'chat-inline-button';
               button.textContent = buttonText;
-      
+              
               button.onclick = () => {
                 input.value = buttonText;
                 sendButton.click();
               };
-      
+              
               buttonWrapper.appendChild(button);
             });
-      
+            
             messageElement.appendChild(buttonWrapper);
           }
-        } else {
-          messageElement.textContent = text;
+          
+          messagesContainer.appendChild(messageElement);
         }
-      
-        messagesContainer.appendChild(messageElement);
+        
+        // Scroll to the bottom after adding all elements
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
       }
       
-      
-      
+      // Helper function for adding messages
+      function addMessage(text, sender) {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('chat-message', sender);
+        messageElement.textContent = text;
+        messagesContainer.appendChild(messageElement);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
       
       function showTypingIndicator() {
         const indicator = document.createElement('div');
@@ -420,11 +597,6 @@
       }
     }
   
-    // Initialize the chat widget after the page has loaded
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', createChatWidget);
-    } else {
-      createChatWidget();
-    }
-  })();
-  
+    // Initialize the chat widget immediately to fix loading issues
+    createChatWidget();
+})();
