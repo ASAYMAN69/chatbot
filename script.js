@@ -119,6 +119,13 @@
   
     // Create the chat UI
     function createChatWidget() {
+      // Basic HTML sanitizer for bot responses
+      function sanitizeHtml(str) {
+        const div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+      }
+
       // Create styles for the widget with CSS variables for theming
       const style = document.createElement('style');
       style.textContent = `
@@ -189,7 +196,7 @@
           bottom: 80px;
           right: 0;
           width: 320px;
-          height: 400px;
+          height: 500px;
           background-color: white;
           border-radius: 10px;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -608,7 +615,7 @@
         imageContainer.className = 'chat-image-container';
         
         const imageElement = document.createElement('img');
-        imageElement.src = imageUrl;
+        imageElement.src = sanitizeHtml(imageUrl);
         imageElement.alt = 'Chat image';
         imageElement.className = 'chat-image';
         imageElement.onerror = () => {
@@ -640,7 +647,7 @@
         
         if (text) {
           const textNode = document.createElement('div');
-          textNode.textContent = text;
+          textNode.innerHTML = sanitizeHtml(text); // Use innerHTML to allow for basic formatting if desired, after sanitization
           messageElement.appendChild(textNode);
         }
         
@@ -652,7 +659,7 @@
           buttons.forEach(buttonText => {
             const button = document.createElement('button');
             button.className = 'chat-inline-button';
-            button.textContent = buttonText;
+            button.innerHTML = sanitizeHtml(buttonText); // Sanitize button text
             
             button.onclick = () => {
               input.value = buttonText;
@@ -673,7 +680,7 @@
       function addMessage(text, sender) {
         const messageElement = document.createElement('div');
         messageElement.classList.add('chat-message', sender);
-        messageElement.textContent = text;
+        messageElement.innerHTML = sanitizeHtml(text);
         messagesContainer.appendChild(messageElement);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
       }
