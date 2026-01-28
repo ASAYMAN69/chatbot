@@ -85,7 +85,7 @@
     
     // Chat API handling
     const chatApi = {
-      webhookUrl: 'https://lovely-proper-sunfish.ngrok-free.app/webhook/b5a531d1-585f-43fe-ba30-ec5aacac4189/chat',
+      webhookUrl: 'http://localhost:5678/webhook-test/chat',
       
       sendMessage: async (message) => {
         try {
@@ -109,7 +109,7 @@
           }
           
           const data = await response.json();
-          return data.output || "Sorry, I couldn't understand that.";
+          return data;
         } catch (error) {
           console.error('Error sending message:', error);
           return "Sorry, there was an error processing your request.";
@@ -557,7 +557,8 @@
       });
       
       // Process and display bot response with separate images and text
-      function processAndDisplayBotResponse(text) {
+      function processAndDisplayBotResponse(responseJson) {
+        // Hide typing indicator with fade-out animation
         // Hide typing indicator with fade-out animation
         const typingIndicator = document.getElementById('typing-indicator');
         if (typingIndicator) {
@@ -569,69 +570,40 @@
           }, 300); // Match the duration of the typing-disappear animation
         }
         
-        // Check for postimg.cc image URLs
-        const imageRegex = /https:\/\/i\.postimg\.cc\/\S+/g;
-        const imageMatches = text.match(imageRegex);
-        
-        // Check for button markup
-        const buttonRegex = /``(.*?)``/g;
-        const buttonMatches = [...text.matchAll(buttonRegex)];
-        
-        // Clean text by removing button markers
-        let cleanText = text.replace(/``.*?``/g, '');
-        
-        // If there are image URLs, remove them from the text as well
-        if (imageMatches) {
-          imageMatches.forEach(imgUrl => {
-            cleanText = cleanText.replace(imgUrl, '');
-          });
+        // Ensure responseJson is an object
+        if (typeof responseJson !== 'object' || responseJson === null) {
+          console.error('Invalid bot response format:', responseJson);
+          addMessage("Sorry, I received an invalid response.", 'bot');
+          return;
         }
         
-        cleanText = cleanText.trim();
+        // Extract output, buttons, and image
+        const output = responseJson.output || "";
+        const buttons = Array.isArray(responseJson.buttons) ? responseJson.buttons : [];
+        const images = Array.isArray(responseJson.image) ? responseJson.image : [];
         
-        let displaySequence = [];
-        
-        // Add images first (if any) to display sequence
-        if (imageMatches && imageMatches.length > 0) {
-          imageMatches.forEach(imageUrl => {
-            displaySequence.push({
-              type: 'image',
-              content: imageUrl
-            });
-          });
-        }
-        
-        // Add text content (with buttons if any) to display sequence
-        if (cleanText || buttonMatches.length > 0) {
-          displaySequence.push({
-            type: 'text',
-            content: cleanText,
-            buttons: buttonMatches.map(match => match[1])
-          });
-        }
-        
-        // Display elements with appropriate timing
         let delay = 0;
-        displaySequence.forEach((item, index) => {
+        
+        // Display images first, if any
+        if (images.length > 0) {
+          displayImages(images, delay);
+          delay += (images.length * 500); // Accumulate delay for images
+        }
+        
+        // Display text output and buttons
+        if (output || buttons.length > 0) {
           setTimeout(() => {
-            if (item.type === 'image') {
-              displayImage(item.content);
-            } else if (item.type === 'text') {
-              displayTextWithButtons(item.content, item.buttons);
-            }
+            displayTextWithButtons(output, buttons);
           }, delay);
-          
-          // Add a 500ms delay between image and text, but only if there's an image followed by text
-          if (item.type === 'image' && index < displaySequence.length - 1 && displaySequence[index + 1].type === 'text') {
-            delay += 500;
-          }
-          
-          delay += 300; // Basic delay between items
-        });
+        } else {
+          // Fallback if no output or buttons are provided but response is valid
+          addMessage("Sorry, I couldn't generate a response for that.", 'bot');
+        }
+
       }
       
-      // Display image
-      function displayImage(imageUrl) {
+      function displayImage(imageUrl, delay = 0) {
+        setTimeout(() => {
         const imageContainer = document.createElement('div');
         imageContainer.className = 'chat-image-container';
         
@@ -647,6 +619,16 @@
         imageContainer.appendChild(imageElement);
         messagesContainer.appendChild(imageContainer);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        });
+      }
+      
+      // Display multiple images with a delay
+      function displayImages(imageUrls, baseDelay = 0) {
+        let delay = baseDelay;
+        imageUrls.forEach(imageUrl => {
+          displayImage(imageUrl, delay);
+          delay += 500; // Add a delay between images
+        });
       }
       
       // Display text with buttons
