@@ -140,6 +140,7 @@
           position: fixed;
           bottom: 20px;
           right: 20px;
+          transition: bottom 0.25s ease;
           z-index: 9999;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
         }
@@ -562,6 +563,22 @@
           handleSendMessage();
         }
       });
+      
+      // Visual Viewport API for mobile keyboard adjustment
+      if (window.visualViewport) {
+        const chatWidget = document.querySelector('#chat-widget-container');
+      
+        window.visualViewport.addEventListener('resize', () => {
+          const keyboardHeight =
+            window.innerHeight - window.visualViewport.height;
+      
+          if (chatWidget) {
+            chatWidget.style.bottom = keyboardHeight > 0
+              ? `${keyboardHeight}px`
+              : '0px';
+          }
+        });
+      }
       
       // Process and display bot response with separate images and text
       function processAndDisplayBotResponse(responseJson) {
